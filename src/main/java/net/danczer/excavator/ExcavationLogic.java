@@ -2,17 +2,12 @@ package net.danczer.excavator;
 
 import net.danczer.excavator.wrapper.*;
 import net.fabricmc.fabric.api.item.v1.FabricItem;
-import net.minecraft.block.*;
 import net.minecraft.block.enums.RailShape;
 import net.minecraft.item.*;
 import net.minecraft.nbt.NbtCompound;
-import net.minecraft.sound.SoundCategory;
-import net.minecraft.sound.SoundEvents;
 import net.minecraft.state.property.Properties;
 import net.minecraft.util.BlockRotation;
 import net.minecraft.util.math.*;
-import java.util.ArrayList;
-import java.util.List;
 
 public class ExcavationLogic {
 
@@ -475,13 +470,13 @@ public class ExcavationLogic {
             float miningSpeed = 1.5f;
 
             if (isPickAxe) {
-                world.playSound(0.0, 0.0, 0.0, SoundEvents.ITEM_AXE_STRIP, SoundCategory.BLOCKS, 1.0F, 1.0F, true);
+                world.playAxeStripSound(0,0,0);
                 miningSpeed /= pickAxeSpeed;
             } else if(isShovel){
-                world.playSound(0.0, 0.0, 0.0, SoundEvents.ITEM_SHOVEL_FLATTEN, SoundCategory.BLOCKS, 1.0F, 1.0F, true);
+                world.playShovelFlattenSound(0,0,0);
                 miningSpeed /= shovelSpeed;
             }else{
-                world.playSound(0.0, 0.0, 0.0, SoundEvents.ITEM_SHOVEL_FLATTEN, SoundCategory.BLOCKS, 1.0F, 1.0F, true);
+                world.playShovelFlattenSound(0,0,0);
             }
 
             float timeToBreakTheBlock = blockHardness * miningSpeed * TICK_PER_SECOND;
