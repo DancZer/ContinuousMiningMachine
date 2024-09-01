@@ -5,7 +5,6 @@ import net.fabricmc.fabric.api.item.v1.FabricItem;
 import net.minecraft.block.enums.RailShape;
 import net.minecraft.item.*;
 import net.minecraft.nbt.NbtCompound;
-import net.minecraft.state.property.Properties;
 import net.minecraft.util.BlockRotation;
 import net.minecraft.util.math.*;
 
@@ -559,11 +558,7 @@ public class ExcavationLogic {
             DancZerBlock wallBlock = getTorchWallBlock(torchType.getBlock());
             DancZerBlockState wallBlockState = wallBlock.getDefaultState();
 
-            if(wallBlockState.contains(Properties.HORIZONTAL_FACING)){
-                world.setBlockState(blockPos, wallBlockState.with(Properties.HORIZONTAL_FACING, torchDir));
-            }else{
-                world.setBlockState(blockPos, wallBlockState);
-            }
+            world.setBlockStateWithDir(blockPos, wallBlockState, torchDir);
 
             lastTorchPos = blockPos;
         }

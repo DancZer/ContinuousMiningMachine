@@ -4,7 +4,9 @@ import net.minecraft.block.BlockState;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvent;
 import net.minecraft.sound.SoundEvents;
+import net.minecraft.state.property.Properties;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Direction;
 import net.minecraft.world.World;
 
 public class DancZerWorld {
@@ -23,8 +25,12 @@ public class DancZerWorld {
         return world.setBlockState(pos, state.getState());
     }
 
-    public boolean setBlockState(BlockPos pos, DancZerBlockState state, int flags) {
-        return world.setBlockState(pos, state.getState(), flags);
+    public boolean setBlockStateWithDir(BlockPos pos, DancZerBlockState state, Direction direction) {
+        if(state.contains(Properties.HORIZONTAL_FACING)){
+            return setBlockState(pos, state.with(Properties.HORIZONTAL_FACING, direction));
+        }else{
+            return setBlockState(pos, state);
+        }
     }
 
     public DancZerBlockState getBlockState(BlockPos pos) {
