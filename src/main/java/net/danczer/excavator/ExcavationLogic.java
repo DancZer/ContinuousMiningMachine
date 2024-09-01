@@ -1,20 +1,16 @@
 package net.danczer.excavator;
 
+import net.danczer.excavator.wrapper.*;
+import net.fabricmc.fabric.api.item.v1.FabricItem;
 import net.minecraft.block.*;
 import net.minecraft.block.enums.RailShape;
-import net.minecraft.entity.vehicle.AbstractMinecartEntity;
-import net.minecraft.fluid.FluidState;
-import net.minecraft.inventory.Inventory;
 import net.minecraft.item.*;
 import net.minecraft.nbt.NbtCompound;
-import net.minecraft.registry.tag.BlockTags;
-import net.minecraft.registry.tag.FluidTags;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
 import net.minecraft.state.property.Properties;
 import net.minecraft.util.BlockRotation;
 import net.minecraft.util.math.*;
-import net.minecraft.world.World;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -54,47 +50,17 @@ public class ExcavationLogic {
         }
     }
 
-    public static final List<BlockItem> USABLE_RAIL_ITEMS = new ArrayList<>();
-    public static final List<BlockItem> USABLE_TORCH_ITEMS = new ArrayList<>();
-    public static final List<Block> TORCH_WALL_BLOCKS = new ArrayList<>();
-    public static final List<MiningToolItem> USABLE_PICKAXE_ITEMS = new ArrayList<>();
-    public static final List<MiningToolItem> USABLE_SHOVEL_ITEMS = new ArrayList<>();
 
-    static {
-        USABLE_TORCH_ITEMS.add((BlockItem) Items.TORCH);
-        USABLE_TORCH_ITEMS.add((BlockItem)Items.REDSTONE_TORCH);
-        USABLE_TORCH_ITEMS.add((BlockItem)Items.SOUL_TORCH);
-
-        TORCH_WALL_BLOCKS.add(Blocks.WALL_TORCH);
-        TORCH_WALL_BLOCKS.add(Blocks.REDSTONE_WALL_TORCH);
-        TORCH_WALL_BLOCKS.add(Blocks.SOUL_WALL_TORCH);
-
-        USABLE_RAIL_ITEMS.add((BlockItem)Items.RAIL);
-        USABLE_RAIL_ITEMS.add((BlockItem)Items.POWERED_RAIL);
-
-        USABLE_PICKAXE_ITEMS.add((MiningToolItem)Items.NETHERITE_PICKAXE);
-        USABLE_PICKAXE_ITEMS.add((MiningToolItem)Items.DIAMOND_PICKAXE);
-        USABLE_PICKAXE_ITEMS.add((MiningToolItem)Items.GOLDEN_PICKAXE);
-        USABLE_PICKAXE_ITEMS.add((MiningToolItem)Items.IRON_PICKAXE);
-        USABLE_PICKAXE_ITEMS.add((MiningToolItem)Items.STONE_PICKAXE);
-        USABLE_PICKAXE_ITEMS.add((MiningToolItem)Items.WOODEN_PICKAXE);
-
-        USABLE_SHOVEL_ITEMS.add((MiningToolItem)Items.NETHERITE_SHOVEL);
-        USABLE_SHOVEL_ITEMS.add((MiningToolItem)Items.DIAMOND_SHOVEL);
-        USABLE_SHOVEL_ITEMS.add((MiningToolItem)Items.IRON_SHOVEL);
-        USABLE_SHOVEL_ITEMS.add((MiningToolItem)Items.GOLDEN_SHOVEL);
-        USABLE_SHOVEL_ITEMS.add((MiningToolItem)Items.STONE_SHOVEL);
-        USABLE_SHOVEL_ITEMS.add((MiningToolItem)Items.WOODEN_SHOVEL);
-    }
 
     private final static int MiningCountZ = 3;
     private final static int TorchPlacementDistance = 6;
     private final static float MaxMiningHardness = 50f; //Obsidian
 
-    private final World world;
+    private final DancZerWorld world;
+    private final ExcavatorConfig config;
 
-    private final Inventory excavatorInventory;
-    private final AbstractMinecartEntity minecartEntity;
+    private final DancZerInventory excavatorInventory;
+    private final DancZerEntity minecartEntity;
 
     private BlockPos lastTorchPos;
     private BlockPos miningPos;
@@ -104,41 +70,20 @@ public class ExcavationLogic {
     private int miningStackTick = 0;
     private int previousMiningBlockTick = 0;
 
-    public BlockItem railType;
-    public BlockItem torchType;
-    public MiningToolItem pickaxeType;
-    public MiningToolItem shovelType;
+    public DancZerBlockItem railType;
+    public DancZerBlockItem torchType;
+    public DancZerMiningToolItem pickaxeType;
+    public DancZerMiningToolItem shovelType;
 
     public MiningStatus miningStatus = MiningStatus.Rolling;
 
-    public ExcavationLogic(AbstractMinecartEntity minecartEntity, Inventory inventory) {
+    public ExcavationLogic(DancZerEntity minecartEntity, DancZerInventory inventory, DancZerWorld world, ExcavatorConfig config) {
         this.minecartEntity = minecartEntity;
         this.excavatorInventory = inventory;
-        this.world = minecartEntity.getWorld();
+        this.world = world;
+        this.config = config;
 
-        if(isItemListContainsNull(USABLE_TORCH_ITEMS)){
-            throw new NullPointerException("Invalid Torch in the usable list for excavator!");
-        }
-
-        if(isItemListContainsNull(USABLE_RAIL_ITEMS)){
-            throw new NullPointerException("Invalid Rail in the usable list for excavator!");
-        }
-
-        if(isItemListContainsNull(USABLE_PICKAXE_ITEMS)){
-            throw new NullPointerException("Invalid Pickaxe in the usable list for excavator!");
-        }
-
-        if(isItemListContainsNull(USABLE_SHOVEL_ITEMS)){
-            throw new NullPointerException("Invalid Shovel in the usable list for excavator!");
-        }
-    }
-
-    private <T extends Item> boolean isItemListContainsNull(List<T> list) {
-        for (Object obj: list) {
-            if(obj == null) return true;
-        }
-
-        return false;
+        config.validate();
     }
 
     public void readNbt(NbtCompound compound) {
@@ -184,34 +129,34 @@ public class ExcavationLogic {
         shovelType = null;
 
         for (int i = 0; i < excavatorInventory.size(); i++) {
-            ItemStack itemStack = excavatorInventory.getStack(i);
-            Item item = itemStack.getItem();
+            DancZerItemStack itemStack = excavatorInventory.getStack(i);
+            FabricItem item = itemStack.getItem();
 
             if(itemStack.isEmpty()) continue;
 
-            if (item instanceof BlockItem) {
+            if (item instanceof DancZerBlockItem) {
                 int idx;
 
-                if((idx = USABLE_TORCH_ITEMS.indexOf(item)) >=0 && latestTorchItemIdx > idx){
+                if((idx = config.getTorchItems().indexOf(item)) >=0 && latestTorchItemIdx > idx){
                     latestTorchItemIdx = idx;
-                    torchType = (BlockItem) item;
+                    torchType = (DancZerBlockItem) item;
                 }
 
-                if((idx = USABLE_RAIL_ITEMS.indexOf(item)) >=0 && latestRailItemIdx > idx){
+                if((idx = config.getRailItems().indexOf(item)) >=0 && latestRailItemIdx > idx){
                     latestRailItemIdx = idx;
-                    railType = (BlockItem) item;
+                    railType = (DancZerBlockItem) item;
                 }
-            }else if (item instanceof MiningToolItem) {
+            }else if (item instanceof DancZerMiningToolItem) {
                 int idx;
 
-                if((idx = USABLE_PICKAXE_ITEMS.indexOf(item)) >=0 && latestPickaxeItemIdx > idx){
+                if((idx = config.getPickAxeItems().indexOf(item)) >=0 && latestPickaxeItemIdx > idx){
                     latestPickaxeItemIdx = idx;
-                    pickaxeType = (MiningToolItem) item;
+                    pickaxeType = (DancZerMiningToolItem) item;
                 }
 
-                if((idx = USABLE_SHOVEL_ITEMS.indexOf(item)) >=0 && latestShovelItemIdx > idx){
+                if((idx = config.getShovelItems().indexOf(item)) >=0 && latestShovelItemIdx > idx){
                     latestShovelItemIdx = idx;
-                    shovelType = (MiningToolItem) item;
+                    shovelType = (DancZerMiningToolItem) item;
                 }
             }
         }
@@ -296,8 +241,8 @@ public class ExcavationLogic {
 
     public boolean isInventoryFull() {
         for (int i = 0; i < excavatorInventory.size(); i++) {
-            ItemStack itemStack = excavatorInventory.getStack(i);
-            Item item = itemStack.getItem();
+            DancZerItemStack itemStack = excavatorInventory.getStack(i);
+            FabricItem item = itemStack.getItem();
 
             if (isToolchainItem(item)) continue;
 
@@ -307,11 +252,11 @@ public class ExcavationLogic {
         return true;
     }
 
-    private boolean isToolchainItem(Item item) {
-        if (item instanceof BlockItem) {
-            return USABLE_TORCH_ITEMS.contains(item) || USABLE_RAIL_ITEMS.contains(item);
+    private boolean isToolchainItem(FabricItem item) {
+        if (item instanceof DancZerBlockItem) {
+            return config.getTorchItems().contains(item) || config.getRailItems().contains(item);
         }else if (item instanceof MiningToolItem) {
-            return USABLE_PICKAXE_ITEMS.contains(item) || USABLE_SHOVEL_ITEMS.contains(item);
+            return config.getPickAxeItems().contains(item) || config.getShovelItems().contains(item);
         }
 
         return false;
@@ -332,10 +277,8 @@ public class ExcavationLogic {
 
         if (dir == null) return null;
 
-        BlockState bs = world.getBlockState(pos);
-        AbstractRailBlock railBlock = (AbstractRailBlock) bs.getBlock();
-
-        RailShape railShape = bs.get(railBlock.getShapeProperty());
+        DancZerBlockState bs = world.getBlockState(pos);
+        RailShape railShape = bs.getRailShape();
 
 
         //fix detection on turns
@@ -377,9 +320,9 @@ public class ExcavationLogic {
     }
 
     private boolean isRailTrack(BlockPos targetPos) {
-        BlockState blockState = world.getBlockState(targetPos);
+        DancZerBlockState blockState = world.getBlockState(targetPos);
 
-        return blockState.isIn(BlockTags.RAILS);
+        return blockState.isRailTrack();
     }
 
     private boolean isFrontHarvested(BlockPos pos) {
@@ -445,15 +388,15 @@ public class ExcavationLogic {
     }
 
     private boolean isBlockHarvested(BlockPos blockPos) {
-        BlockState blockState = world.getBlockState(blockPos);
+        DancZerBlockState blockState = world.getBlockState(blockPos);
 
-        return blockState.getCollisionShape(world, blockPos).isEmpty() || blockState.isIn(BlockTags.RAILS);
+        return blockState.isBlockHarvested(world, blockPos);
     }
 
     private boolean isStopSign(BlockPos blockPos) {
         for (int i = 0; i < MiningCountZ; i++) {
-            BlockState blockState = world.getBlockState(blockPos);
-            if (blockState.isIn(BlockTags.SIGNS) || blockState.isIn(BlockTags.WALL_SIGNS)|| blockState.isIn(BlockTags.STANDING_SIGNS)) return true;
+            DancZerBlockState blockState = world.getBlockState(blockPos);
+            if (blockState.isSign()) return true;
             blockPos = blockPos.up();
         }
 
@@ -465,12 +408,12 @@ public class ExcavationLogic {
     }
 
     private MiningStatus checkStatusAt(BlockPos pos) {
-        FluidState fLuidState = world.getBlockState(pos).getFluidState();
+        DancZerBlockState blockState = world.getBlockState(pos);
 
-        if (!fLuidState.isEmpty()) {
-            if (fLuidState.isIn(FluidTags.LAVA)) {
+        if (blockState.isFluid()) {
+            if (blockState.isLava()) {
                 return MiningStatus.HazardLava;
-            } else if (fLuidState.isIn(FluidTags.WATER)) {
+            } else if (blockState.isWater()) {
                 return MiningStatus.HazardWater;
             } else {
                 return MiningStatus.HazardUnknownFluid;
@@ -507,7 +450,7 @@ public class ExcavationLogic {
     private boolean tickBlockMining() {
         if (isBlockHarvested(miningPos)) return true;
 
-        BlockState blockState = world.getBlockState(miningPos);
+        DancZerBlockState blockState = world.getBlockState(miningPos);
 
         float blockHardness = blockState.getHardness(world, miningPos);
 
@@ -517,8 +460,8 @@ public class ExcavationLogic {
         boolean isPickAxe = pickaxeType.isSuitableFor(blockState);
         boolean isShovel = shovelType.isSuitableFor(blockState);
 
-        float pickAxeSpeed = pickaxeType.getMiningSpeedMultiplier(new ItemStack(pickaxeType), blockState);
-        float shovelSpeed = shovelType.getMiningSpeedMultiplier(new ItemStack(shovelType), blockState);
+        float pickAxeSpeed = pickaxeType.getMiningSpeedMultiplier(new DancZerItemStack(pickaxeType), blockState);
+        float shovelSpeed = shovelType.getMiningSpeedMultiplier(new DancZerItemStack(shovelType), blockState);
 
         if(isPickAxe && isShovel){
             if(pickAxeSpeed > shovelSpeed){
@@ -595,11 +538,11 @@ public class ExcavationLogic {
         if (torchType == null) return; //optional
         if (miningDir == null) return;
 
-        BlockState targetBlockState = world.getBlockState(blockPos);
+        DancZerBlockState targetBlockState = world.getBlockState(blockPos);
 
         //find existing torch
-        for (BlockItem torch : USABLE_TORCH_ITEMS) {
-            Block wallBlock = getTorchWallBlock(torch.getBlock());
+        for (DancZerBlockItem torch : config.getTorchItems()) {
+            DancZerBlock wallBlock = getTorchWallBlock(torch.getBlock());
             if(targetBlockState.isOf(wallBlock)){
                 lastTorchPos = blockPos;
                 return;
@@ -618,8 +561,8 @@ public class ExcavationLogic {
 
         //place torch
         if (torchDir != null && reduceInventoryItem(torchType)) {
-            Block wallBlock = getTorchWallBlock(torchType.getBlock());
-            BlockState wallBlockState = wallBlock.getDefaultState();
+            DancZerBlock wallBlock = getTorchWallBlock(torchType.getBlock());
+            DancZerBlockState wallBlockState = wallBlock.getDefaultState();
 
             if(wallBlockState.contains(Properties.HORIZONTAL_FACING)){
                 world.setBlockState(blockPos, wallBlockState.with(Properties.HORIZONTAL_FACING, torchDir));
@@ -631,8 +574,8 @@ public class ExcavationLogic {
         }
     }
 
-    private Block getTorchWallBlock(Block block){
-        for (Block wallBlock: TORCH_WALL_BLOCKS) {
+    private DancZerBlock getTorchWallBlock(DancZerBlock block){
+        for (DancZerBlock wallBlock: config.getWallTorchBlocks()) {
             if(block.getClass().isAssignableFrom(wallBlock.getClass())){
                 return wallBlock;
             }
@@ -641,9 +584,9 @@ public class ExcavationLogic {
         return block;
     }
 
-    private boolean reduceInventoryItem(Item item) {
+    private boolean reduceInventoryItem(FabricItem item) {
         for (int i = 0; i < excavatorInventory.size(); i++) {
-            ItemStack itemStack = excavatorInventory.getStack(i);
+            DancZerItemStack itemStack = excavatorInventory.getStack(i);
 
             if (!itemStack.isEmpty() && itemStack.getItem() == item) {
                 itemStack.split(1);

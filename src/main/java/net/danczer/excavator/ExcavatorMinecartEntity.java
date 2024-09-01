@@ -1,6 +1,9 @@
 package net.danczer.excavator;
 
 import com.mojang.logging.LogUtils;
+import net.danczer.excavator.wrapper.DancZerEntity;
+import net.danczer.excavator.wrapper.DancZerInventory;
+import net.danczer.excavator.wrapper.DancZerWorld;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.block.entity.Hopper;
@@ -37,7 +40,7 @@ public class ExcavatorMinecartEntity extends StorageMinecartEntity implements Ho
     private static final float CollectBlockWithHardness = 3f;
     private static final float MinecartPushForce = 0.05f;
 
-    private final ExcavationLogic excavationLogic = new ExcavationLogic(this, this);
+    private final ExcavationLogic excavationLogic = new ExcavationLogic(new DancZerEntity(this), new DancZerInventory(this), new DancZerWorld(this.getWorld()), new InGameExcavatorConfig());
     private boolean enabled = true;
     private int transferTicker = -1;
     private final BlockPos lastPosition = BlockPos.ORIGIN;
