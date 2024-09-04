@@ -3,9 +3,6 @@ package net.danczer.excavator.wrapper;
 
 import net.minecraft.block.AbstractRailBlock;
 import net.minecraft.block.Block;
-import net.minecraft.block.RailBlock;
-import net.minecraft.block.enums.RailShape;
-import net.minecraft.util.BlockRotation;
 
 public class DancZerBlock {
 

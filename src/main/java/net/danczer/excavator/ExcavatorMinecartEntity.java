@@ -129,8 +129,6 @@ public class ExcavatorMinecartEntity extends StorageMinecartEntity implements Ho
         ExcavationLogic.MiningStatus prevStatus = excavationLogic.miningStatus;
 
         if (!this.getWorld().isClient && this.isAlive() && this.isEnabled()) {
-            excavationLogic.updateExcavatorToolchain();
-
             excavationLogic.tick();
 
             setMiningStatus(excavationLogic.miningStatus);

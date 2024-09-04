@@ -3,7 +3,6 @@ package net.danczer.excavator;
 import net.danczer.excavator.wrapper.*;
 import net.fabricmc.fabric.api.item.v1.FabricItem;
 import net.minecraft.block.enums.RailShape;
-import net.minecraft.item.*;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.util.BlockRotation;
 import net.minecraft.util.math.*;
@@ -69,6 +68,10 @@ public class ExcavationLogic {
     public DancZerMiningToolItem pickaxeType;
     public DancZerMiningToolItem shovelType;
 
+    public MiningStatus getMiningStatus() {
+        return miningStatus;
+    }
+
     public MiningStatus miningStatus = MiningStatus.Rolling;
 
     public ExcavationLogic(DancZerEntity minecartEntity, DancZerInventory inventory, DancZerWorld world, ExcavatorConfig config) {
@@ -110,8 +113,7 @@ public class ExcavationLogic {
         miningStackTick = compound.getInt("miningCountTick");
     }
 
-    public void updateExcavatorToolchain() {
-
+    private void updateExcavatorToolchain() {
         int latestTorchItemIdx = Integer.MAX_VALUE;
         int latestRailItemIdx = Integer.MAX_VALUE;
         int latestPickaxeItemIdx = Integer.MAX_VALUE;
@@ -188,6 +190,8 @@ public class ExcavationLogic {
     }
 
     public void tick() {
+        updateExcavatorToolchain();
+
         if (!isToolchainSet()) {
             resetMining();
             miningStatus = MiningStatus.MissingToolchain;
@@ -249,7 +253,7 @@ public class ExcavationLogic {
     private boolean isToolchainItem(FabricItem item) {
         if (item instanceof DancZerBlockItem) {
             return config.getTorchItems().contains(item) || config.getRailItems().contains(item);
-        }else if (item instanceof MiningToolItem) {
+        }else if (item instanceof DancZerMiningToolItem) {
             return config.getPickAxeItems().contains(item) || config.getShovelItems().contains(item);
         }
 

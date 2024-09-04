@@ -3,7 +3,6 @@ package net.danczer.excavator.wrapper;
 import net.fabricmc.fabric.api.item.v1.FabricItem;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
-import org.jetbrains.annotations.Nullable;
 
 public class DancZerItemStack {
     private final ItemStack itemStack;

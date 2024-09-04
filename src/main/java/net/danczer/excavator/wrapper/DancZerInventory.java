@@ -1,7 +1,6 @@
 package net.danczer.excavator.wrapper;
 
 import net.minecraft.inventory.Inventory;
-import net.minecraft.item.ItemStack;
 
 public class DancZerInventory {
     private final Inventory inventory;

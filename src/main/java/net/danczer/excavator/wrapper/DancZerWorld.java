@@ -1,6 +1,5 @@
 package net.danczer.excavator.wrapper;
 
-import net.minecraft.block.BlockState;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvent;
 import net.minecraft.sound.SoundEvents;
