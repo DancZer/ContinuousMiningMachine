@@ -6,6 +6,7 @@ import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.Hand;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Vec3d;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -20,6 +21,10 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class ExcavationLogicTest {
+
+    private enum BlockType {
+        Air, Rail, Sand, Dirt, Rock, Steel, Diamond, Obsidian, Bedrock
+    }
 
     @Mock
     DancZerItemStack itemStackEmpty;
@@ -102,10 +107,10 @@ class ExcavationLogicTest {
     @Test
     void inventoryWithAny() {
         when(itemStackAny.isEmpty()).thenReturn(false);
-        when(itemStackAny.getItem()).thenReturn(new FabricItem() {
+        when(itemStackAny.getItem()).thenReturn(new DancZerItem() {
             @Override
-            public boolean allowNbtUpdateAnimation(PlayerEntity player, Hand hand, ItemStack oldStack, ItemStack newStack) {
-                return false;
+            public FabricItem getFabricItem() {
+                return null;
             }
         });
 
@@ -306,6 +311,114 @@ class ExcavationLogicTest {
 
     @Test
     void rollingMinecart() {
+        setupMinecartForRolling();
+
+        setupBlockBelowCart(new BlockType[]{
+                BlockType.Rock, BlockType.Rock, BlockType.Rock, BlockType.Rock,
+                BlockType.Rock, BlockType.Rock, BlockType.Rock, BlockType.Rock,
+                BlockType.Rock, BlockType.Rock, BlockType.Rock, BlockType.Rock,
+        }, new BlockType[]{
+                BlockType.Rock, BlockType.Rock, BlockType.Rock, BlockType.Rock,
+                BlockType.Rail, BlockType.Rail, BlockType.Rail, BlockType.Rail,
+                BlockType.Rock, BlockType.Rock, BlockType.Rock, BlockType.Rock,
+        }, new BlockType[]{
+                BlockType.Air, BlockType.Air, BlockType.Air, BlockType.Air,
+                BlockType.Air, BlockType.Air, BlockType.Air, BlockType.Air,
+                BlockType.Air, BlockType.Air, BlockType.Air, BlockType.Air,
+        }, new BlockType[]{
+                BlockType.Air, BlockType.Air, BlockType.Air, BlockType.Air,
+                BlockType.Air, BlockType.Air, BlockType.Air, BlockType.Air,
+                BlockType.Air, BlockType.Air, BlockType.Air, BlockType.Air,
+        }, new BlockType[]{
+                BlockType.Air, BlockType.Air, BlockType.Air, BlockType.Air,
+                BlockType.Air, BlockType.Air, BlockType.Air, BlockType.Air,
+                BlockType.Air, BlockType.Air, BlockType.Air, BlockType.Air,
+        });
+
+        logic.tick();
+
+        assertThat(logic.getMiningStatus()).isSameAs(ExcavationLogic.MiningStatus.Rolling);
+    }
+
+
+    @Test
+    void rollingMinecartAirInFront() {
+        setupMinecartForRolling();
+
+        setupBlockBelowCart(new BlockType[]{
+                BlockType.Rock, BlockType.Rock, BlockType.Rock, BlockType.Rock,
+                BlockType.Rock, BlockType.Rock, BlockType.Rock, BlockType.Rock,
+                BlockType.Rock, BlockType.Rock, BlockType.Rock, BlockType.Rock,
+        }, new BlockType[]{
+                BlockType.Rock, BlockType.Rock, BlockType.Rock, BlockType.Rock,
+                BlockType.Rail, BlockType.Rail, BlockType.Rail, BlockType.Rail,
+                BlockType.Rock, BlockType.Rock, BlockType.Rock, BlockType.Rock,
+        }, new BlockType[]{
+                BlockType.Air, BlockType.Air, BlockType.Air, BlockType.Air,
+                BlockType.Air, BlockType.Air, BlockType.Air, BlockType.Air,
+                BlockType.Air, BlockType.Air, BlockType.Air, BlockType.Air,
+        }, new BlockType[]{
+                BlockType.Air, BlockType.Air, BlockType.Air, BlockType.Air,
+                BlockType.Air, BlockType.Air, BlockType.Air, BlockType.Air,
+                BlockType.Air, BlockType.Air, BlockType.Air, BlockType.Air,
+        }, new BlockType[]{
+                BlockType.Air, BlockType.Air, BlockType.Air, BlockType.Air,
+                BlockType.Air, BlockType.Air, BlockType.Air, BlockType.Air,
+                BlockType.Air, BlockType.Air, BlockType.Air, BlockType.Air,
+        });
+
+        logic.tick();
+
+        assertThat(logic.getMiningStatus()).isSameAs(ExcavationLogic.MiningStatus.Rolling);
+    }
+
+    private void setupBlockBelowCart(BlockType[] below9blocks, BlockType[] level9blocks, BlockType[] above9blocks, BlockType[] above9blocks2, BlockType[] above9blocks3) {
+        for (int x = -1; x <= 2; x++) {
+            for (int z = -1; z <= 1; z++) {
+                int id = 4 * (z + 1) + x + 1;
+                setupBlockStateAt(x, -1, z, below9blocks[id]);
+                setupBlockStateAt(x, 0, z, level9blocks[id]);
+                setupBlockStateAt(x, 1, z, above9blocks[id]);
+                setupBlockStateAt(x, 2, z, above9blocks2[id]);
+                setupBlockStateAt(x, 3, z, above9blocks3[id]);
+            }
+        }
+
+    }
+
+    private void setupBlockStateAt(int x, int y, int z, BlockType blockType) {
+        var blockPos = new BlockPos(x, y, z);
+        var blockState = mock(DancZerBlockState.class);
+
+        when(blockState.isBlockHarvested(world, blockPos)).thenReturn(blockType == BlockType.Air);
+
+        switch (blockType) {
+            case Air -> {
+            }
+            case Rail -> {
+                when(blockState.isRailTrack()).thenReturn(true);
+                when(blockState.isBlockHarvested(world, blockPos)).thenReturn(false);
+            }
+            case Sand -> {
+            }
+            case Dirt -> {
+            }
+            case Rock -> {
+            }
+            case Steel -> {
+            }
+            case Diamond -> {
+            }
+            case Obsidian -> {
+            }
+            case Bedrock -> {
+            }
+
+        }
+        when(world.getBlockState(blockPos)).thenReturn(blockState);
+    }
+
+    private void setupMinecartForRolling() {
         when(config.getShovelItems()).thenReturn(List.of(shovelMiningToolItem0, shovelMiningToolItem1));
         when(config.getPickAxeItems()).thenReturn(List.of(pickAxeMiningToolItem0, pickAxeMiningToolItem1));
         when(config.getRailItems()).thenReturn(List.of(railBlockItem0));
@@ -330,14 +443,6 @@ class ExcavationLogicTest {
 
         when(itemStackEmpty.isEmpty()).thenReturn(true);
 
-        var entityPos = new BlockPos(0,0,0);
-        var entityPosBlockState = mock(DancZerBlockState.class);
-
-        when(entityPosBlockState.isRailTrack()).thenReturn(false);
-
-        when(entity.getBlockPos()).thenReturn(entityPos);
-        when(world.getBlockState(entityPos)).thenReturn(entityPosBlockState);
-
         setupInventory(new DancZerItemStack[]{
                 itemStackMiningToolItemShovel0,
                 itemStackMiningToolItemPickAxe0,
@@ -347,8 +452,7 @@ class ExcavationLogicTest {
                 itemStackEmpty,
         });
 
-        logic.tick();
-
-        assertThat(logic.getMiningStatus()).isSameAs(ExcavationLogic.MiningStatus.Rolling);
+        when(entity.getBlockPos()).thenReturn(new BlockPos(0, 0, 0));
+        when(entity.getVelocity()).thenReturn(new Vec3d(1, 0, 0));
     }
 }

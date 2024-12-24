@@ -1,14 +1,13 @@
 package net.danczer.excavator.wrapper;
 
 import net.fabricmc.fabric.api.item.v1.FabricItem;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
+import net.minecraft.item.*;
 
 public class DancZerItemStack {
     private final ItemStack itemStack;
 
-    public DancZerItemStack(FabricItem item){
-        this.itemStack = new ItemStack((Item)item);
+    public DancZerItemStack(DancZerItem item) {
+        this.itemStack = new ItemStack((Item)item.getFabricItem());
     }
 
     public DancZerItemStack(ItemStack itemStack) {
@@ -19,8 +18,16 @@ public class DancZerItemStack {
         return itemStack;
     }
 
-    public FabricItem getItem() {
-        return itemStack.getItem();
+    public DancZerItem getItem() {
+        FabricItem item = itemStack.getItem();
+
+        if (item instanceof MiningToolItem) {
+            return new DancZerMiningToolItem((MiningToolItem) item);
+        } else if (item instanceof BlockItem) {
+            return new DancZerBlockItem((BlockItem) item);
+        } else {
+            return null;
+        }
     }
 
     public boolean isEmpty() {

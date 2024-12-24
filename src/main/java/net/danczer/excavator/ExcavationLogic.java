@@ -2,10 +2,13 @@ package net.danczer.excavator;
 
 import net.danczer.excavator.wrapper.*;
 import net.fabricmc.fabric.api.item.v1.FabricItem;
+import net.minecraft.block.BlockState;
 import net.minecraft.block.enums.RailShape;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.util.BlockRotation;
 import net.minecraft.util.math.*;
+
+import java.util.List;
 
 public class ExcavationLogic {
 
@@ -126,7 +129,7 @@ public class ExcavationLogic {
 
         for (int i = 0; i < excavatorInventory.size(); i++) {
             DancZerItemStack itemStack = excavatorInventory.getStack(i);
-            FabricItem item = itemStack.getItem();
+            DancZerItem item = itemStack.getItem();
 
             if(itemStack.isEmpty()) continue;
 
@@ -157,7 +160,6 @@ public class ExcavationLogic {
             }
         }
     }
-
 
     public void writeNbt(NbtCompound compound) {
         compound.putLong("miningPos", miningPos == null ? 0 : miningPos.asLong());
@@ -240,7 +242,7 @@ public class ExcavationLogic {
     public boolean isInventoryFull() {
         for (int i = 0; i < excavatorInventory.size(); i++) {
             DancZerItemStack itemStack = excavatorInventory.getStack(i);
-            FabricItem item = itemStack.getItem();
+            DancZerItem item = itemStack.getItem();
 
             if (isToolchainItem(item)) continue;
 
@@ -250,7 +252,7 @@ public class ExcavationLogic {
         return true;
     }
 
-    private boolean isToolchainItem(FabricItem item) {
+    private boolean isToolchainItem(DancZerItem item) {
         if (item instanceof DancZerBlockItem) {
             return config.getTorchItems().contains(item) || config.getRailItems().contains(item);
         }else if (item instanceof DancZerMiningToolItem) {
@@ -394,7 +396,7 @@ public class ExcavationLogic {
     private boolean isStopSign(BlockPos blockPos) {
         for (int i = 0; i < MiningCountZ; i++) {
             DancZerBlockState blockState = world.getBlockState(blockPos);
-            if (blockState.isSign()) return true;
+            if (blockState != null &&blockState.isSign()) return true;
             blockPos = blockPos.up();
         }
 
@@ -402,7 +404,8 @@ public class ExcavationLogic {
     }
 
     private boolean isAir(BlockPos pos) {
-        return world.getBlockState(pos).isAir();
+        DancZerBlockState state = world.getBlockState(pos);
+        return state != null && state.isAir();
     }
 
     private MiningStatus checkStatusAt(BlockPos pos) {
@@ -578,7 +581,7 @@ public class ExcavationLogic {
         return block;
     }
 
-    private boolean reduceInventoryItem(FabricItem item) {
+    private boolean reduceInventoryItem(DancZerItem item) {
         for (int i = 0; i < excavatorInventory.size(); i++) {
             DancZerItemStack itemStack = excavatorInventory.getStack(i);
 
