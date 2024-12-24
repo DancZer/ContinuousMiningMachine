@@ -23,7 +23,7 @@ dependencies {
     // Fabric API. This is technically optional, but you probably want it anyway.
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 
-    testImplementation("com.approvaltests:approvaltests:${project.approval_version}")
+    testImplementation("com.approvaltests:approvaltests:${project.junit_approval_version}")
 
     testImplementation ("org.junit.jupiter:junit-jupiter-api:${project.junit_version}")
     testRuntimeOnly ("org.junit.jupiter:junit-jupiter-engine:${project.junit_version}")
@@ -31,7 +31,7 @@ dependencies {
     testImplementation ("org.mockito:mockito-core:${project.junit_mockito}")
     testImplementation ("org.mockito:mockito-junit-jupiter:${project.junit_mockito}")
 
-    testImplementation ("org.assertj:assertj-core:${project.junit_mockito}")
+    testImplementation ("org.assertj:assertj-core:${project.junit_assert}")
 }
 
 processResources {
