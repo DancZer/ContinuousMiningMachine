@@ -1,14 +1,11 @@
 package net.danczer.excavator;
 
 import net.danczer.excavator.wrapper.*;
-import net.fabricmc.fabric.api.item.v1.FabricItem;
-import net.minecraft.block.BlockState;
 import net.minecraft.block.enums.RailShape;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.util.BlockRotation;
 import net.minecraft.util.math.*;
 
-import java.util.List;
 
 public class ExcavationLogic {
 
@@ -341,34 +338,28 @@ public class ExcavationLogic {
             return MiningStatus.EmergencyStop;
         }
 
-        BlockPos frontDown = frontPos.down();
-        BlockPos behindFrontDown = frontPos.down().offset(miningDir);
+        //check cliff hazard
+        if (isAir(frontPos.down())) return MiningStatus.HazardCliff;
+        if (isAir(frontPos.offset(miningDir).down())) return MiningStatus.HazardCliff;
 
         MiningStatus miningStatus;
 
+        //check front
+        if ((miningStatus = checkStatusAt(frontPos)) != MiningStatus.Mining) return miningStatus;
+
         //front bottom
-        if (isAir(frontDown)) return MiningStatus.HazardCliff;
-        if (isAir(behindFrontDown)) return MiningStatus.HazardCliff;
-
-        if ((miningStatus = checkStatusAt(frontDown)) != MiningStatus.Mining) return miningStatus;
-        if ((miningStatus = checkStatusAt(behindFrontDown)) != MiningStatus.Mining) return miningStatus;
-
-        //behind front bottom
-        if ((miningStatus = checkStatusAt(frontPos.offset(miningDir).down())) != MiningStatus.Mining)
-            return miningStatus;
+        if ((miningStatus = checkStatusAt(frontPos.down())) != MiningStatus.Mining) return miningStatus;
+        if ((miningStatus = checkStatusAt(frontPos.offset(miningDir).down())) != MiningStatus.Mining) return miningStatus;
 
         //front top
         if ((miningStatus = checkStatusAt(frontPos.up(MiningCountZ))) != MiningStatus.Mining) return miningStatus;
 
         //behind the Front
-        if ((miningStatus = checkPosStackStatus(frontPos.offset(miningDir))) != MiningStatus.Mining)
-            return miningStatus;
+        if ((miningStatus = checkPosStackStatus(frontPos.offset(miningDir))) != MiningStatus.Mining) return miningStatus;
 
         //front sides
-        if ((miningStatus = checkPosStackStatus(frontPos.offset(miningDir.rotateYClockwise()))) != MiningStatus.Mining)
-            return miningStatus;
-        if ((miningStatus = checkPosStackStatus(frontPos.offset(miningDir.rotateYCounterclockwise()))) != MiningStatus.Mining)
-            return miningStatus;
+        if ((miningStatus = checkPosStackStatus(frontPos.offset(miningDir.rotateYClockwise()))) != MiningStatus.Mining) return miningStatus;
+        if ((miningStatus = checkPosStackStatus(frontPos.offset(miningDir.rotateYCounterclockwise()))) != MiningStatus.Mining) return miningStatus;
 
         if (isFrontHarvested(frontPos)) {
             return MiningStatus.Rolling;
@@ -396,7 +387,7 @@ public class ExcavationLogic {
     private boolean isStopSign(BlockPos blockPos) {
         for (int i = 0; i < MiningCountZ; i++) {
             DancZerBlockState blockState = world.getBlockState(blockPos);
-            if (blockState != null &&blockState.isSign()) return true;
+            if (blockState != null && blockState.isSign()) return true;
             blockPos = blockPos.up();
         }
 
