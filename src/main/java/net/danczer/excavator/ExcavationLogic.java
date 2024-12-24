@@ -9,7 +9,7 @@ import net.minecraft.util.math.*;
 
 public class ExcavationLogic {
 
-    private static final int TICK_PER_SECOND = 20;
+    public static final int TICK_PER_SECOND = 20;
 
     public enum MiningStatus {
         Rolling(0),
@@ -61,18 +61,26 @@ public class ExcavationLogic {
 
     private int miningBlockTick = 0;
     private int miningStackTick = 0;
-    private int previousMiningBlockTick = 0;
+    private int previousProgress = 0;
 
     public DancZerBlockItem railType;
     public DancZerBlockItem torchType;
+
     public DancZerMiningToolItem pickaxeType;
+    public DancZerItemStack pickaxeItemStack;
+
     public DancZerMiningToolItem shovelType;
+    public DancZerItemStack shovelItemStack;
 
     public MiningStatus getMiningStatus() {
         return miningStatus;
     }
 
     public MiningStatus miningStatus = MiningStatus.Rolling;
+
+    public BlockPos getMiningPos(){
+        return miningPos;
+    }
 
     public ExcavationLogic(DancZerEntity minecartEntity, DancZerInventory inventory, DancZerWorld world, ExcavatorConfig config) {
         this.minecartEntity = minecartEntity;
@@ -121,8 +129,12 @@ public class ExcavationLogic {
 
         torchType = null;
         railType = null;
+
         pickaxeType = null;
+        pickaxeItemStack = null;
+
         shovelType = null;
+        shovelItemStack = null;
 
         for (int i = 0; i < excavatorInventory.size(); i++) {
             DancZerItemStack itemStack = excavatorInventory.getStack(i);
@@ -148,11 +160,13 @@ public class ExcavationLogic {
                 if((idx = config.getPickAxeItems().indexOf(item)) >=0 && latestPickaxeItemIdx > idx){
                     latestPickaxeItemIdx = idx;
                     pickaxeType = (DancZerMiningToolItem) item;
+                    pickaxeItemStack = itemStack;
                 }
 
                 if((idx = config.getShovelItems().indexOf(item)) >=0 && latestShovelItemIdx > idx){
                     latestShovelItemIdx = idx;
                     shovelType = (DancZerMiningToolItem) item;
+                    shovelItemStack = itemStack;
                 }
             }
         }
@@ -212,7 +226,6 @@ public class ExcavationLogic {
         } else {
             miningStatus = checkFrontStatus(frontPos, minecartPos);
 
-            //nothing to do
             if (miningStatus == MiningStatus.Rolling) {
                 miningDone(frontPos);
             } else if (miningStatus == MiningStatus.Mining) {
@@ -225,7 +238,7 @@ public class ExcavationLogic {
                     if (isBlockMined) {
                         miningStackTick++;
 
-                        if (miningStackTick > MiningCountZ) {
+                        if (miningStackTick >= MiningCountZ) {
                             miningDone(frontPos);
                         } else { //mining of the stack is done
                             beginMining(miningPos.down());
@@ -419,6 +432,7 @@ public class ExcavationLogic {
         miningStatus = MiningStatus.Mining;
         miningPos = blockPos;
         miningBlockTick = 0;
+        previousProgress = -1;
         if (miningPos != null) {
             world.setBlockBreakingInfo(0, miningPos, -1);
         }
@@ -430,7 +444,7 @@ public class ExcavationLogic {
     }
 
     private void resetMining() {
-        if (miningPos != null) {
+        if (miningPos != null && !isBlockHarvested(miningPos)) {
             world.setBlockBreakingInfo(0, miningPos, -1);
         }
         miningStatus = MiningStatus.Rolling;
@@ -452,8 +466,8 @@ public class ExcavationLogic {
         boolean isPickAxe = pickaxeType.isSuitableFor(blockState);
         boolean isShovel = shovelType.isSuitableFor(blockState);
 
-        float pickAxeSpeed = pickaxeType.getMiningSpeedMultiplier(new DancZerItemStack(pickaxeType), blockState);
-        float shovelSpeed = shovelType.getMiningSpeedMultiplier(new DancZerItemStack(shovelType), blockState);
+        float pickAxeSpeed = pickaxeType.getMiningSpeedMultiplier(pickaxeItemStack, blockState);
+        float shovelSpeed = shovelType.getMiningSpeedMultiplier(shovelItemStack, blockState);
 
         if(isPickAxe && isShovel){
             if(pickAxeSpeed > shovelSpeed){
@@ -477,17 +491,16 @@ public class ExcavationLogic {
             }
 
             float timeToBreakTheBlock = blockHardness * miningSpeed * TICK_PER_SECOND;
+            int progress = Math.min((int) ((miningBlockTick / timeToBreakTheBlock)*10f), 10);
 
-            if (miningBlockTick > previousMiningBlockTick + 5) {
-                int progress = Math.min((int) ((miningBlockTick / timeToBreakTheBlock)*10f), 10);
-
+            if (progress % 2  == 0 && previousProgress != progress) {
                 world.setBlockBreakingInfo(0, miningPos, progress);
-                previousMiningBlockTick = miningBlockTick;
+                previousProgress = progress;
             }
 
             if (miningBlockTick > timeToBreakTheBlock) {
                 world.breakBlock(miningPos, true);
-                previousMiningBlockTick = 0;
+                previousProgress = 0;
                 return true;
             } else {
                 return false;

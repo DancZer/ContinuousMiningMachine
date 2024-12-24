@@ -11,12 +11,15 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.mockito.stubbing.Answer;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -102,6 +105,17 @@ class ExcavationLogicTest {
     DancZerMiningToolItem axeMiningToolItem;
 
     @Mock
+    DancZerBlock railDefaultBlock;
+    @Mock
+    DancZerBlockState railDefaultBlockState;
+
+
+    @Mock
+    DancZerBlock torchDefaultBlock;
+    @Mock
+    DancZerBlockState torchDefaultBlockState;
+
+    @Mock
     DancZerEntity entity;
     @Mock
     DancZerInventory inventory;
@@ -112,6 +126,8 @@ class ExcavationLogicTest {
 
     @InjectMocks
     ExcavationLogic logic;
+
+    Set<BlockPos> removedBlocks = new HashSet<>();
 
     private void setupInventory(DancZerItemStack[] inventoryItems) {
         when(inventory.size()).thenReturn(inventoryItems.length);
@@ -401,6 +417,7 @@ class ExcavationLogicTest {
 
         assertThat(logic.getMiningStatus()).isSameAs(ExcavationLogic.MiningStatus.HazardWater);
     }
+
     @Test
     void rollingMinecartWaterInFront2() {
         setupMinecartForRolling();
@@ -416,6 +433,7 @@ class ExcavationLogicTest {
 
         assertThat(logic.getMiningStatus()).isSameAs(ExcavationLogic.MiningStatus.HazardWater);
     }
+
     @Test
     void rollingMinecartWaterInFront3() {
         setupMinecartForRolling();
@@ -454,7 +472,7 @@ class ExcavationLogicTest {
 
         setupBlocksAroundMinecart(
                 BlockLayerRock,
-                BlockLayerRockWithRail.setFrontColumn(TestBlockType.Rock,TestBlockType.Water),
+                BlockLayerRockWithRail.setFrontColumn(TestBlockType.Rock, TestBlockType.Water),
                 BlockLayerAir,
                 BlockLayerAir,
                 BlockLayerAir);
@@ -470,7 +488,7 @@ class ExcavationLogicTest {
 
         setupBlocksAroundMinecart(
                 BlockLayerRock,
-                BlockLayerRockWithRail.setFrontColumn(TestBlockType.Rock,TestBlockType.Lava),
+                BlockLayerRockWithRail.setFrontColumn(TestBlockType.Rock, TestBlockType.Lava),
                 BlockLayerAir,
                 BlockLayerAir,
                 BlockLayerAir);
@@ -486,7 +504,7 @@ class ExcavationLogicTest {
 
         setupBlocksAroundMinecart(
                 BlockLayerRock,
-                BlockLayerRockWithRail.setFrontColumn(TestBlockType.Rock,TestBlockType.Fluid),
+                BlockLayerRockWithRail.setFrontColumn(TestBlockType.Rock, TestBlockType.Fluid),
                 BlockLayerAir,
                 BlockLayerAir,
                 BlockLayerAir);
@@ -503,7 +521,7 @@ class ExcavationLogicTest {
 
         setupBlocksAroundMinecart(
                 BlockLayerRock,
-                BlockLayerRockWithRail.setFrontColumn(TestBlockType.Rock,TestBlockType.Rock).setFrontColumn(TestBlockType.Fluid, MinecartTestBlockLayer.AxisDir.Left),
+                BlockLayerRockWithRail.setFrontColumn(TestBlockType.Rock, TestBlockType.Rock).setFrontColumn(TestBlockType.Fluid, MinecartTestBlockLayer.AxisDir.Left),
                 BlockLayerAir,
                 BlockLayerAir,
                 BlockLayerAir);
@@ -520,7 +538,7 @@ class ExcavationLogicTest {
         setupBlocksAroundMinecart(
                 BlockLayerRock,
                 BlockLayerRockWithRail,
-                BlockLayerAir.setFrontColumn(TestBlockType.Rock,TestBlockType.Rock).setFrontColumn(TestBlockType.Fluid, MinecartTestBlockLayer.AxisDir.Right),
+                BlockLayerAir.setFrontColumn(TestBlockType.Rock, TestBlockType.Rock).setFrontColumn(TestBlockType.Fluid, MinecartTestBlockLayer.AxisDir.Right),
                 BlockLayerAir,
                 BlockLayerRock);
 
@@ -537,7 +555,7 @@ class ExcavationLogicTest {
                 BlockLayerRock,
                 BlockLayerRockWithRail,
                 BlockLayerAir,
-                BlockLayerAir.setFrontColumn(TestBlockType.Rock,TestBlockType.Rock).setFrontColumn(TestBlockType.Fluid, MinecartTestBlockLayer.AxisDir.Right),
+                BlockLayerAir.setFrontColumn(TestBlockType.Rock, TestBlockType.Rock).setFrontColumn(TestBlockType.Fluid, MinecartTestBlockLayer.AxisDir.Right),
                 BlockLayerRock);
 
         logic.tick();
@@ -561,8 +579,61 @@ class ExcavationLogicTest {
         assertThat(logic.getMiningStatus()).isSameAs(ExcavationLogic.MiningStatus.HazardUnknownFluid);
     }
 
-    private void setupBlocksAroundMinecart(MinecartTestBlockLayer belowBlocks, MinecartTestBlockLayer levelBlocks, MinecartTestBlockLayer aboveBlocks, MinecartTestBlockLayer aboveBlocks2, MinecartTestBlockLayer aboveBlocks3) {
+    @Test
+    void mineInFrontAllThreeBlocks() {
+        setupMinecartForRolling();
 
+        setupBlocksAroundMinecart(
+                BlockLayerRock,
+                BlockLayerRockWithRailAndRockToMine,
+                BlockLayerMinedTunnel.setFrontColumn(TestBlockType.Sand, TestBlockType.Rock),
+                BlockLayerMinedTunnel.setFrontColumn(TestBlockType.Diamond, TestBlockType.Rock),
+                BlockLayerRock);
+
+        when(shovelMiningToolItem0.getMiningSpeedMultiplier(any(DancZerItemStack.class), any(DancZerBlockState.class))).thenReturn(1.5f);
+        when(shovelMiningToolItem1.getMiningSpeedMultiplier(any(DancZerItemStack.class), any(DancZerBlockState.class))).thenReturn(3.0f);
+        when(pickAxeMiningToolItem0.getMiningSpeedMultiplier(any(DancZerItemStack.class), any(DancZerBlockState.class))).thenReturn(1.5f);
+        when(pickAxeMiningToolItem1.getMiningSpeedMultiplier(any(DancZerItemStack.class), any(DancZerBlockState.class))).thenReturn(3.0f);
+
+        when(pickAxeMiningToolItem1.isSuitableFor(any(DancZerBlockState.class))).thenReturn(true);
+
+        final int maxIteration = 1000;
+
+        List<BlockPos> miningPosList = new ArrayList<>();
+        int i = 0;
+
+        do {
+            if(i>0) {
+                assertThat(logic.getMiningStatus()).isSameAs(ExcavationLogic.MiningStatus.Mining);
+
+                if (miningPosList.isEmpty() || !miningPosList.get(miningPosList.size()-1).equals(logic.getMiningPos())) {
+                    miningPosList.add(logic.getMiningPos());
+                }
+            }
+            i++;
+
+            logic.tick();
+        }while(i < maxIteration && logic.getMiningStatus() == ExcavationLogic.MiningStatus.Mining);
+
+        for (BlockPos miningPos : miningPosList) {
+            verify(world, times(1)).setBlockBreakingInfo(anyInt(), eq(miningPos), eq(-1));
+            verify(world, times(6)).setBlockBreakingInfo(anyInt(), eq(miningPos), intThat(argument -> argument % 2 == 0));
+            verify(world, times(1)).setBlockBreakingInfo(anyInt(), eq(miningPos), eq(10));
+            verify(world).breakBlock(eq(miningPos), anyBoolean());
+        }
+
+        assertThat(logic.getMiningStatus()).isSameAs(ExcavationLogic.MiningStatus.Rolling);
+
+        //clean inventory to simulate the missing items
+        setupInventory(new DancZerItemStack[0]);
+
+        logic.tick();
+        assertThat(logic.getMiningPos()).isNull();
+        assertThat(logic.getMiningStatus()).isSameAs(ExcavationLogic.MiningStatus.MissingToolchain);
+    }
+
+    private void setupBlocksAroundMinecart(MinecartTestBlockLayer belowBlocks, MinecartTestBlockLayer levelBlocks, MinecartTestBlockLayer aboveBlocks, MinecartTestBlockLayer aboveBlocks2, MinecartTestBlockLayer aboveBlocks3) {
+        removedBlocks.clear();
         for (int x = -1; x <= 2; x++) {
             for (int z = -1; z <= 1; z++) {
                 setupBlockStateAt(x, -1, z, belowBlocks.getBlockType(x, z));
@@ -579,7 +650,7 @@ class ExcavationLogicTest {
         var blockPos = new BlockPos(x, y, z);
         var blockState = mock(DancZerBlockState.class);
 
-        when(blockState.isBlockHarvested(world, blockPos)).thenReturn(blockType == TestBlockType.Air || blockType == TestBlockType.Rail);
+        when(blockState.isBlockHarvested(world, blockPos)).then(invocation -> blockType == TestBlockType.Air || blockType == TestBlockType.Rail || removedBlocks.contains(invocation.getArgument(1)));
         when(blockState.isFluid()).thenReturn(blockType == TestBlockType.Water || blockType == TestBlockType.Lava || blockType == TestBlockType.Fluid);
         when(blockState.isLava()).thenReturn(blockType == TestBlockType.Lava);
         when(blockState.isWater()).thenReturn(blockType == TestBlockType.Water);
@@ -591,18 +662,25 @@ class ExcavationLogicTest {
                 when(blockState.isRailTrack()).thenReturn(true);
             }
             case Sand -> {
+                when(blockState.getHardness(eq(world), eq(blockPos))).thenReturn(0.1f);
             }
             case Dirt -> {
+                when(blockState.getHardness(eq(world), eq(blockPos))).thenReturn(0.5f);
             }
             case Rock -> {
+                when(blockState.getHardness(eq(world), eq(blockPos))).thenReturn(1f);
             }
             case Steel -> {
+                when(blockState.getHardness(eq(world), eq(blockPos))).thenReturn(2f);
             }
             case Diamond -> {
+                when(blockState.getHardness(eq(world), eq(blockPos))).thenReturn(10f);
             }
             case Obsidian -> {
+                when(blockState.getHardness(eq(world), eq(blockPos))).thenReturn(50f);
             }
             case Bedrock -> {
+                when(blockState.getHardness(eq(world), eq(blockPos))).thenReturn(100f);
             }
 
         }
@@ -610,6 +688,12 @@ class ExcavationLogicTest {
     }
 
     private void setupMinecartForRolling() {
+
+        when(shovelMiningToolItem0.getMiningSpeedMultiplier(any(DancZerItemStack.class), any(DancZerBlockState.class))).thenReturn(1.5f);
+        when(shovelMiningToolItem1.getMiningSpeedMultiplier(any(DancZerItemStack.class), any(DancZerBlockState.class))).thenReturn(3.0f);
+        when(pickAxeMiningToolItem0.getMiningSpeedMultiplier(any(DancZerItemStack.class), any(DancZerBlockState.class))).thenReturn(1.5f);
+        when(pickAxeMiningToolItem1.getMiningSpeedMultiplier(any(DancZerItemStack.class), any(DancZerBlockState.class))).thenReturn(3.0f);
+
         when(config.getShovelItems()).thenReturn(List.of(shovelMiningToolItem0, shovelMiningToolItem1));
         when(config.getPickAxeItems()).thenReturn(List.of(pickAxeMiningToolItem0, pickAxeMiningToolItem1));
         when(config.getRailItems()).thenReturn(List.of(railBlockItem0));
@@ -645,6 +729,23 @@ class ExcavationLogicTest {
 
         when(entity.getBlockPos()).thenReturn(new BlockPos(0, 0, 0));
         when(entity.getVelocity()).thenReturn(new Vec3d(1, 0, 0));
+
+        doAnswer((Answer<String>) invocation -> {
+            System.out.println("Block breaking info: "+ invocation.getArgument(1)+ ", "+invocation.getArgument(2));
+            return "Hello";
+        }).when(world).setBlockBreakingInfo(anyInt(), any(BlockPos.class), anyInt());
+
+        doAnswer((Answer<String>) invocation -> {
+            System.out.println("Block removed at: "+invocation.getArgument(0));
+            removedBlocks.add(invocation.getArgument(0));
+            return "Hello";
+        }).when(world).breakBlock(any(BlockPos.class), anyBoolean());
+
+        when(railBlockItem0.getBlock()).thenReturn(railDefaultBlock);
+        when(railDefaultBlock.getDefaultState()).thenReturn(railDefaultBlockState);
+
+        when(torchBlockItem0.getBlock()).thenReturn(torchDefaultBlock);
+        when(torchDefaultBlock.getDefaultState()).thenReturn(torchDefaultBlockState);
     }
 
     private static class MinecartTestBlockLayer {
