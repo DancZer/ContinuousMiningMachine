@@ -632,6 +632,23 @@ class ExcavationLogicTest {
         assertThat(logic.getMiningStatus()).isSameAs(ExcavationLogic.MiningStatus.MissingToolchain);
     }
 
+    @Test
+    void notOnRail() {
+        setupMinecartForRolling();
+
+        setupBlocksAroundMinecart(
+                BlockLayerRock,
+                BlockLayerRock,
+                BlockLayerMinedTunnel,
+                BlockLayerMinedTunnel,
+                BlockLayerMinedTunnel);
+
+        logic.tick();
+        assertThat(logic.getMiningPos()).isNull();
+        assertThat(logic.getMiningStatus()).isSameAs(ExcavationLogic.MiningStatus.Rolling);
+    }
+
+
     private void setupBlocksAroundMinecart(MinecartTestBlockLayer belowBlocks, MinecartTestBlockLayer levelBlocks, MinecartTestBlockLayer aboveBlocks, MinecartTestBlockLayer aboveBlocks2, MinecartTestBlockLayer aboveBlocks3) {
         removedBlocks.clear();
         for (int x = -1; x <= 2; x++) {
