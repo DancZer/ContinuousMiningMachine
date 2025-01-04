@@ -6,6 +6,9 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -13,10 +16,7 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.mockito.stubbing.Answer;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
@@ -30,32 +30,42 @@ class ExcavationLogicTest {
     }
 
     private final MinecartTestBlockLayer BlockLayerRock = new MinecartTestBlockLayer(new TestBlockType[]{
-            TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock,
-            TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock,
-            TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock,
+            TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock,
+            TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock,
+            TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock,
+            TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock,
+            TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock,
     });
-    private final MinecartTestBlockLayer BlockLayerRockWithRail = new MinecartTestBlockLayer(new TestBlockType[]{
-            TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock,
-            TestBlockType.Rail, TestBlockType.Rail, TestBlockType.Rail, TestBlockType.Rail,
-            TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock,
+    private final MinecartTestBlockLayer BlockLayerWithRail = new MinecartTestBlockLayer(new TestBlockType[]{
+            TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock,
+            TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock,
+            TestBlockType.Rail, TestBlockType.Rail, TestBlockType.Rail, TestBlockType.Rail, TestBlockType.Rail,
+            TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock,
+            TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock,
     });
-    private final MinecartTestBlockLayer BlockLayerRockWithRailAndRockToMine = new MinecartTestBlockLayer(new TestBlockType[]{
-            TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock,
-            TestBlockType.Rail, TestBlockType.Rail, TestBlockType.Rock, TestBlockType.Rock,
-            TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock,
+    private final MinecartTestBlockLayer BlockLayerWithSingleRail = new MinecartTestBlockLayer(new TestBlockType[]{
+            TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock,
+            TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock,
+            TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rail, TestBlockType.Rock, TestBlockType.Rock,
+            TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock,
+            TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock,
     });
 
     private final MinecartTestBlockLayer BlockLayerAir = new MinecartTestBlockLayer(new TestBlockType[]{
-            TestBlockType.Air, TestBlockType.Air, TestBlockType.Air, TestBlockType.Air,
-            TestBlockType.Air, TestBlockType.Air, TestBlockType.Air, TestBlockType.Air,
-            TestBlockType.Air, TestBlockType.Air, TestBlockType.Air, TestBlockType.Air,
+            TestBlockType.Air, TestBlockType.Air, TestBlockType.Air, TestBlockType.Air, TestBlockType.Air,
+            TestBlockType.Air, TestBlockType.Air, TestBlockType.Air, TestBlockType.Air, TestBlockType.Air,
+            TestBlockType.Air, TestBlockType.Air, TestBlockType.Air, TestBlockType.Air, TestBlockType.Air,
+            TestBlockType.Air, TestBlockType.Air, TestBlockType.Air, TestBlockType.Air, TestBlockType.Air,
+            TestBlockType.Air, TestBlockType.Air, TestBlockType.Air, TestBlockType.Air, TestBlockType.Air,
     });
 
 
     private final MinecartTestBlockLayer BlockLayerMinedTunnel = new MinecartTestBlockLayer(new TestBlockType[]{
-            TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock,
-            TestBlockType.Air, TestBlockType.Air, TestBlockType.Air, TestBlockType.Air,
-            TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock,
+            TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock,
+            TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock,
+            TestBlockType.Air, TestBlockType.Air, TestBlockType.Air, TestBlockType.Air, TestBlockType.Air,
+            TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock,
+            TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock, TestBlockType.Rock,
     });
 
     @Mock
@@ -355,240 +365,132 @@ class ExcavationLogicTest {
     }
 
     @Test
-    void rollingMinecartRailInFront() {
+    void shouldRollWhenNothingToMine() {
         setupMinecartForRolling();
 
-        setupBlocksAroundMinecart(
+        MinecartTestBlockArea area = new MinecartTestBlockArea(
                 BlockLayerRock,
-                BlockLayerRockWithRail,
+                BlockLayerWithRail,
                 BlockLayerAir,
                 BlockLayerAir,
                 BlockLayerAir);
+
+        area.initializeMock(world, removedBlocks);
 
         logic.tick();
 
         assertThat(logic.getMiningStatus()).isSameAs(ExcavationLogic.MiningStatus.Rolling);
     }
 
-    @Test
-    void rollingMinecartUnknownFluidInFront() {
+    @ParameterizedTest
+    @MethodSource("hazardFixtureFoundNear")
+    void shouldStopWhenHazardFoundNear(TestBlockType blockType, int x, int y, int z, ExcavationLogic.MiningStatus expectedStatus) {
         setupMinecartForRolling();
 
-        setupBlocksAroundMinecart(
+        MinecartTestBlockArea area = new MinecartTestBlockArea(
                 BlockLayerRock,
-                BlockLayerRockWithRail.setFrontColumn(TestBlockType.Fluid),
+                BlockLayerWithRail,
                 BlockLayerAir,
                 BlockLayerAir,
                 BlockLayerAir);
 
+        area.getLayer(y).setBlockType(blockType, x, z);
+
+        area.initializeMock(world, removedBlocks);
+
         logic.tick();
 
-        assertThat(logic.getMiningStatus()).isSameAs(ExcavationLogic.MiningStatus.HazardUnknownFluid);
+        assertThat(logic.getMiningStatus()).isSameAs(expectedStatus);
     }
 
-    @Test
-    void rollingMinecartLavaInFront() {
+    @ParameterizedTest
+    @MethodSource("hazardFixtureFoundFar")
+    void shouldStopWhenHazardFoundFar(TestBlockType blockType, int x, int y, int z, ExcavationLogic.MiningStatus expectedStatus) {
         setupMinecartForRolling();
 
-        setupBlocksAroundMinecart(
+        MinecartTestBlockArea area = new MinecartTestBlockArea(
                 BlockLayerRock,
-                BlockLayerRockWithRail.setFrontColumn(TestBlockType.Lava),
+                BlockLayerWithSingleRail,
                 BlockLayerAir,
                 BlockLayerAir,
                 BlockLayerAir);
 
-        logic.tick();
+        area.getLayer(y).setBlockType(blockType, x, z);
 
-        assertThat(logic.getMiningStatus()).isSameAs(ExcavationLogic.MiningStatus.HazardLava);
-    }
-
-    @Test
-    void rollingMinecartWaterInFront() {
-        setupMinecartForRolling();
-
-        setupBlocksAroundMinecart(
-                BlockLayerRock,
-                BlockLayerRockWithRail.setFrontColumn(TestBlockType.Water),
-                BlockLayerAir,
-                BlockLayerAir,
-                BlockLayerAir);
+        area.initializeMock(world, removedBlocks);
 
         logic.tick();
 
-        assertThat(logic.getMiningStatus()).isSameAs(ExcavationLogic.MiningStatus.HazardWater);
-    }
-
-    @Test
-    void rollingMinecartWaterInFront2() {
-        setupMinecartForRolling();
-
-        setupBlocksAroundMinecart(
-                BlockLayerRock,
-                BlockLayerRockWithRail,
-                BlockLayerAir.setFrontColumn(TestBlockType.Water),
-                BlockLayerAir,
-                BlockLayerAir);
-
-        logic.tick();
-
-        assertThat(logic.getMiningStatus()).isSameAs(ExcavationLogic.MiningStatus.HazardWater);
-    }
-
-    @Test
-    void rollingMinecartWaterInFront3() {
-        setupMinecartForRolling();
-
-        setupBlocksAroundMinecart(
-                BlockLayerRock,
-                BlockLayerRockWithRail,
-                BlockLayerAir,
-                BlockLayerAir.setFrontColumn(TestBlockType.Water),
-                BlockLayerAir);
-
-        logic.tick();
-
-        assertThat(logic.getMiningStatus()).isSameAs(ExcavationLogic.MiningStatus.HazardWater);
-    }
-
-    @Test
-    void rollingMinecartWaterInFrontTop() {
-        setupMinecartForRolling();
-
-        setupBlocksAroundMinecart(
-                BlockLayerRock,
-                BlockLayerRockWithRail,
-                BlockLayerAir,
-                BlockLayerAir,
-                BlockLayerAir.setFrontColumn(TestBlockType.Water));
-
-        logic.tick();
-
-        assertThat(logic.getMiningStatus()).isSameAs(ExcavationLogic.MiningStatus.HazardWater);
-    }
-
-    @Test
-    void rollingMinecartWaterBehindTheFront() {
-        setupMinecartForRolling();
-
-        setupBlocksAroundMinecart(
-                BlockLayerRock,
-                BlockLayerRockWithRail.setFrontColumn(TestBlockType.Rock, TestBlockType.Water),
-                BlockLayerAir,
-                BlockLayerAir,
-                BlockLayerAir);
-
-        logic.tick();
-
-        assertThat(logic.getMiningStatus()).isSameAs(ExcavationLogic.MiningStatus.HazardWater);
-    }
-
-    @Test
-    void rollingMinecartLavaBehindTheFront() {
-        setupMinecartForRolling();
-
-        setupBlocksAroundMinecart(
-                BlockLayerRock,
-                BlockLayerRockWithRail.setFrontColumn(TestBlockType.Rock, TestBlockType.Lava),
-                BlockLayerAir,
-                BlockLayerAir,
-                BlockLayerAir);
-
-        logic.tick();
-
-        assertThat(logic.getMiningStatus()).isSameAs(ExcavationLogic.MiningStatus.HazardLava);
-    }
-
-    @Test
-    void rollingMinecartFluidBehindTheFront() {
-        setupMinecartForRolling();
-
-        setupBlocksAroundMinecart(
-                BlockLayerRock,
-                BlockLayerRockWithRail.setFrontColumn(TestBlockType.Rock, TestBlockType.Fluid),
-                BlockLayerAir,
-                BlockLayerAir,
-                BlockLayerAir);
-
-        logic.tick();
-
-        assertThat(logic.getMiningStatus()).isSameAs(ExcavationLogic.MiningStatus.HazardUnknownFluid);
+        assertThat(logic.getMiningStatus()).isSameAs(expectedStatus);
     }
 
 
-    @Test
-    void rollingMinecartFluidBehindTheFrontLeft() {
-        setupMinecartForRolling();
+    /**             -2-1 0 1 2
+     *  3 XX XX      X X X   X
+     *  2 X   X      X X X   X
+     *  1 X   X      X X X   X
+     *  0 X   X      X X X   X
+     * -1 X   X      X X X X X
+     */
+    static List<Arguments> hazardFixtureFoundNear() {
+        List<Arguments> fixture = new ArrayList<>();
 
-        setupBlocksAroundMinecart(
-                BlockLayerRock,
-                BlockLayerRockWithRail.setFrontColumn(TestBlockType.Rock, TestBlockType.Rock).setFrontColumn(TestBlockType.Fluid, MinecartTestBlockLayer.AxisDir.Left),
-                BlockLayerAir,
-                BlockLayerAir,
-                BlockLayerAir);
+        final int x = 1;
+        final int maxY = 3;
 
-        logic.tick();
+        fixture.add(Arguments.of(TestBlockType.Fluid, x, -1, 0, ExcavationLogic.MiningStatus.HazardUnknownFluid));
+        fixture.add(Arguments.of(TestBlockType.Lava, x, -1, 0, ExcavationLogic.MiningStatus.HazardLava));
+        fixture.add(Arguments.of(TestBlockType.Water, x, -1, 0, ExcavationLogic.MiningStatus.HazardWater));
 
-        assertThat(logic.getMiningStatus()).isSameAs(ExcavationLogic.MiningStatus.HazardUnknownFluid);
+        for (int y = 0; y <= maxY-1; y++) {
+            for (int z = -1; z <= 1; z++) {
+                fixture.add(Arguments.of(TestBlockType.Fluid, x, y, z, ExcavationLogic.MiningStatus.HazardUnknownFluid));
+                fixture.add(Arguments.of(TestBlockType.Lava, x, y, z, ExcavationLogic.MiningStatus.HazardLava));
+                fixture.add(Arguments.of(TestBlockType.Water, x, y, z, ExcavationLogic.MiningStatus.HazardWater));
+            }
+        }
+
+        fixture.add(Arguments.of(TestBlockType.Fluid, x, maxY, 0, ExcavationLogic.MiningStatus.HazardUnknownFluid));
+        fixture.add(Arguments.of(TestBlockType.Lava, x, maxY, 0, ExcavationLogic.MiningStatus.HazardLava));
+        fixture.add(Arguments.of(TestBlockType.Water, x, maxY, 0, ExcavationLogic.MiningStatus.HazardWater));
+
+        return fixture;
     }
 
-    @Test
-    void rollingMinecartFluidBehindTheFront2() {
-        setupMinecartForRolling();
+    /**             -2-1 0 1 2
+     *  3 XXXXX      X X X X X
+     *  2 XXXXX      X X X X
+     *  1 XXXXX      X X X X
+     *  0 XXXXX      X X X X
+     * -1 XXXXX      X X X X X
+     */
+    static List<Arguments> hazardFixtureFoundFar() {
+        List<Arguments> fixture = new ArrayList<>();
 
-        setupBlocksAroundMinecart(
-                BlockLayerRock,
-                BlockLayerRockWithRail,
-                BlockLayerAir.setFrontColumn(TestBlockType.Rock, TestBlockType.Rock).setFrontColumn(TestBlockType.Fluid, MinecartTestBlockLayer.AxisDir.Right),
-                BlockLayerAir,
-                BlockLayerRock);
+        final int x = 2;
+        final int z = 0;
 
-        logic.tick();
+        for (int y = 0; y <= 2; y++) {
+                fixture.add(Arguments.of(TestBlockType.Fluid, x, y, z, ExcavationLogic.MiningStatus.HazardUnknownFluid));
+                fixture.add(Arguments.of(TestBlockType.Lava, x, y, z, ExcavationLogic.MiningStatus.HazardLava));
+                fixture.add(Arguments.of(TestBlockType.Water, x, y, z, ExcavationLogic.MiningStatus.HazardWater));
+        }
 
-        assertThat(logic.getMiningStatus()).isSameAs(ExcavationLogic.MiningStatus.HazardUnknownFluid);
-    }
-
-    @Test
-    void rollingMinecartFluidBehindTheFront3() {
-        setupMinecartForRolling();
-
-        setupBlocksAroundMinecart(
-                BlockLayerRock,
-                BlockLayerRockWithRail,
-                BlockLayerAir,
-                BlockLayerAir.setFrontColumn(TestBlockType.Rock, TestBlockType.Rock).setFrontColumn(TestBlockType.Fluid, MinecartTestBlockLayer.AxisDir.Right),
-                BlockLayerRock);
-
-        logic.tick();
-
-        assertThat(logic.getMiningStatus()).isSameAs(ExcavationLogic.MiningStatus.HazardUnknownFluid);
-    }
-
-    @Test
-    void rollingMinecartFluidOverTheFront() {
-        setupMinecartForRolling();
-
-        setupBlocksAroundMinecart(
-                BlockLayerRock,
-                BlockLayerRockWithRailAndRockToMine,
-                BlockLayerMinedTunnel,
-                BlockLayerMinedTunnel,
-                BlockLayerRock.setFrontColumn(TestBlockType.Fluid));
-
-        logic.tick();
-
-        assertThat(logic.getMiningStatus()).isSameAs(ExcavationLogic.MiningStatus.HazardUnknownFluid);
+        return fixture;
     }
 
     @Test
     void mineInFrontAllThreeBlocks() {
         setupMinecartForRolling();
 
-        setupBlocksAroundMinecart(
+        MinecartTestBlockArea area = new MinecartTestBlockArea(
                 BlockLayerRock,
-                BlockLayerRockWithRailAndRockToMine,
-                BlockLayerMinedTunnel.setFrontColumn(TestBlockType.Sand, TestBlockType.Rock),
-                BlockLayerMinedTunnel.setFrontColumn(TestBlockType.Diamond, TestBlockType.Rock),
-                BlockLayerRock);
+                BlockLayerWithRail.setBlockType(TestBlockType.Steel, 1, 0),
+                BlockLayerAir.setBlockType(TestBlockType.Diamond, 1, 0),
+                BlockLayerAir.setBlockType(TestBlockType.Sand, 1, 0),
+                BlockLayerAir.setBlockType(TestBlockType.Dirt, 1, 0));
+
+        area.initializeMock(world, removedBlocks);
 
         when(shovelMiningToolItem0.getMiningSpeedMultiplier(any(DancZerItemStack.class), any(DancZerBlockState.class))).thenReturn(1.5f);
         when(shovelMiningToolItem1.getMiningSpeedMultiplier(any(DancZerItemStack.class), any(DancZerBlockState.class))).thenReturn(3.0f);
@@ -603,17 +505,17 @@ class ExcavationLogicTest {
         int i = 0;
 
         do {
-            if(i>0) {
+            if (i > 0) {
                 assertThat(logic.getMiningStatus()).isSameAs(ExcavationLogic.MiningStatus.Mining);
 
-                if (miningPosList.isEmpty() || !miningPosList.get(miningPosList.size()-1).equals(logic.getMiningPos())) {
+                if (miningPosList.isEmpty() || !miningPosList.get(miningPosList.size() - 1).equals(logic.getMiningPos())) {
                     miningPosList.add(logic.getMiningPos());
                 }
             }
             i++;
 
             logic.tick();
-        }while(i < maxIteration && logic.getMiningStatus() == ExcavationLogic.MiningStatus.Mining);
+        } while (i < maxIteration && logic.getMiningStatus() == ExcavationLogic.MiningStatus.Mining);
 
         for (BlockPos miningPos : miningPosList) {
             verify(world, times(1)).setBlockBreakingInfo(anyInt(), eq(miningPos), eq(-1));
@@ -636,12 +538,14 @@ class ExcavationLogicTest {
     void notOnRail() {
         setupMinecartForRolling();
 
-        setupBlocksAroundMinecart(
+        MinecartTestBlockArea area = new MinecartTestBlockArea(
                 BlockLayerRock,
                 BlockLayerRock,
                 BlockLayerMinedTunnel,
                 BlockLayerMinedTunnel,
                 BlockLayerMinedTunnel);
+
+        area.initializeMock(world, removedBlocks);
 
         logic.tick();
         assertThat(logic.getMiningPos()).isNull();
@@ -649,60 +553,26 @@ class ExcavationLogicTest {
     }
 
 
-    private void setupBlocksAroundMinecart(MinecartTestBlockLayer belowBlocks, MinecartTestBlockLayer levelBlocks, MinecartTestBlockLayer aboveBlocks, MinecartTestBlockLayer aboveBlocks2, MinecartTestBlockLayer aboveBlocks3) {
-        removedBlocks.clear();
-        for (int x = -1; x <= 2; x++) {
-            for (int z = -1; z <= 1; z++) {
-                setupBlockStateAt(x, -1, z, belowBlocks.getBlockType(x, z));
-                setupBlockStateAt(x, 0, z, levelBlocks.getBlockType(x, z));
-                setupBlockStateAt(x, 1, z, aboveBlocks.getBlockType(x, z));
-                setupBlockStateAt(x, 2, z, aboveBlocks2.getBlockType(x, z));
-                setupBlockStateAt(x, 3, z, aboveBlocks3.getBlockType(x, z));
-            }
-        }
+    @Test
+    void onRailAndStopped() {
+        setupMinecartForRolling();
 
+        when(entity.getVelocity()).thenReturn(new Vec3d(0, 0, 0));
+
+        MinecartTestBlockArea area = new MinecartTestBlockArea(
+                BlockLayerRock,
+                BlockLayerWithRail,
+                BlockLayerMinedTunnel,
+                BlockLayerMinedTunnel,
+                BlockLayerMinedTunnel);
+
+        area.initializeMock(world, removedBlocks);
+
+        logic.tick();
+        assertThat(logic.getMiningPos()).isNull();
+        assertThat(logic.getMiningStatus()).isSameAs(ExcavationLogic.MiningStatus.Rolling);
     }
 
-    private void setupBlockStateAt(int x, int y, int z, TestBlockType blockType) {
-        var blockPos = new BlockPos(x, y, z);
-        var blockState = mock(DancZerBlockState.class);
-
-        when(blockState.isBlockHarvested(world, blockPos)).then(invocation -> blockType == TestBlockType.Air || blockType == TestBlockType.Rail || removedBlocks.contains(invocation.getArgument(1)));
-        when(blockState.isFluid()).thenReturn(blockType == TestBlockType.Water || blockType == TestBlockType.Lava || blockType == TestBlockType.Fluid);
-        when(blockState.isLava()).thenReturn(blockType == TestBlockType.Lava);
-        when(blockState.isWater()).thenReturn(blockType == TestBlockType.Water);
-
-        switch (blockType) {
-            case Air -> {
-            }
-            case Rail -> {
-                when(blockState.isRailTrack()).thenReturn(true);
-            }
-            case Sand -> {
-                when(blockState.getHardness(eq(world), eq(blockPos))).thenReturn(0.1f);
-            }
-            case Dirt -> {
-                when(blockState.getHardness(eq(world), eq(blockPos))).thenReturn(0.5f);
-            }
-            case Rock -> {
-                when(blockState.getHardness(eq(world), eq(blockPos))).thenReturn(1f);
-            }
-            case Steel -> {
-                when(blockState.getHardness(eq(world), eq(blockPos))).thenReturn(2f);
-            }
-            case Diamond -> {
-                when(blockState.getHardness(eq(world), eq(blockPos))).thenReturn(10f);
-            }
-            case Obsidian -> {
-                when(blockState.getHardness(eq(world), eq(blockPos))).thenReturn(50f);
-            }
-            case Bedrock -> {
-                when(blockState.getHardness(eq(world), eq(blockPos))).thenReturn(100f);
-            }
-
-        }
-        when(world.getBlockState(blockPos)).thenReturn(blockState);
-    }
 
     private void setupMinecartForRolling() {
 
@@ -748,12 +618,12 @@ class ExcavationLogicTest {
         when(entity.getVelocity()).thenReturn(new Vec3d(1, 0, 0));
 
         doAnswer((Answer<String>) invocation -> {
-            System.out.println("Block breaking info: "+ invocation.getArgument(1)+ ", "+invocation.getArgument(2));
+            System.out.println("Block breaking info: " + invocation.getArgument(1) + ", " + invocation.getArgument(2));
             return "Hello";
         }).when(world).setBlockBreakingInfo(anyInt(), any(BlockPos.class), anyInt());
 
         doAnswer((Answer<String>) invocation -> {
-            System.out.println("Block removed at: "+invocation.getArgument(0));
+            System.out.println("Block removed at: " + invocation.getArgument(0));
             removedBlocks.add(invocation.getArgument(0));
             return "Hello";
         }).when(world).breakBlock(any(BlockPos.class), anyBoolean());
@@ -766,66 +636,109 @@ class ExcavationLogicTest {
     }
 
     private static class MinecartTestBlockLayer {
-        public enum AxisDir{
-            Left, Center, Right
-        }
-
-        final int blockCountX = 4;
-        final int blockCountY = 3;
+        final int blockCountX = 5;
+        final int blockCountY = 5;
         final int blockCount = blockCountX * blockCountY;
 
         TestBlockType[] blockTypes;
+        DancZerBlockState[] blockStates;
 
         public MinecartTestBlockLayer(TestBlockType[] blockTypes) {
             assertThat(blockTypes.length).isSameAs(blockCount);
             this.blockTypes = blockTypes;
+            blockStates = new DancZerBlockState[blockTypes.length];
         }
 
-        public TestBlockType getBlockType(int x, int z) {
-            return blockTypes[getIdx(x, z)];
-        }
-
-        public MinecartTestBlockLayer setFrontColumn(TestBlockType blockType) {
-            return setFrontColumn(blockType, AxisDir.Center);
-        }
-
-        public MinecartTestBlockLayer setFrontColumn(TestBlockType blockType, AxisDir dir) {
-            int z = getZ(dir);
-
-            blockTypes[getIdx(1, z)] = blockType;
+        public MinecartTestBlockLayer setBlockType(TestBlockType blockType, int x, int z) {
+            blockTypes[getIdx(x, z)] = blockType;
             return this;
-        }
-
-        public MinecartTestBlockLayer setFrontColumn(TestBlockType firstType, TestBlockType behindFirstType) {
-            return setFrontColumn(firstType, behindFirstType, AxisDir.Center);
-        }
-
-        public MinecartTestBlockLayer setFrontColumn(TestBlockType firstType, TestBlockType behindFirstType, AxisDir dir) {
-            int z = getZ(dir);
-
-            blockTypes[getIdx(1, z)] = firstType;
-            blockTypes[getIdx(2, z)] = behindFirstType;
-            return this;
-        }
-
-        private int getZ(AxisDir dir) {
-            switch (dir) {
-                case Left -> {
-                    return -1;
-                }
-                case Center -> {
-                    return 0;
-                }
-                case Right -> {
-                    return 1;
-                }
-            }
-
-            throw new IllegalStateException("Unexpected value: " + dir);
         }
 
         private int getIdx(int x, int z) {
-            return blockCountX * (z + 1) + x + 1;
+            return blockCountX * (z + 2) + x + 2;
+        }
+
+        public void initializeMock(int y, DancZerWorld world, Set<BlockPos> removedBlocks) {
+            for (int x = -2; x <= 2; x++) {
+                for (int z = -2; z <= 2; z++) {
+                    int idx = getIdx(x, z);
+                    var blockPos = new BlockPos(x, y, z);
+                    blockStates[idx] = createBlockState(blockPos, blockTypes[idx], world, removedBlocks);
+                }
+            }
+        }
+
+        private DancZerBlockState createBlockState(BlockPos blockPos, TestBlockType blockType, DancZerWorld world, Set<BlockPos> removedBlocks) {
+            var blockState = mock(DancZerBlockState.class);
+
+            when(blockState.isBlockHarvested(eq(world), eq(blockPos))).then(invocation -> blockType == TestBlockType.Air || blockType == TestBlockType.Rail || removedBlocks.contains(invocation.getArgument(1)));
+            when(blockState.isFluid()).thenReturn(blockType == TestBlockType.Water || blockType == TestBlockType.Lava || blockType == TestBlockType.Fluid);
+            when(blockState.isLava()).thenReturn(blockType == TestBlockType.Lava);
+            when(blockState.isWater()).thenReturn(blockType == TestBlockType.Water);
+
+            switch (blockType) {
+                case Air -> {
+                }
+                case Rail -> {
+                    when(blockState.isRailTrack()).thenReturn(true);
+                }
+                case Sand -> {
+                    when(blockState.getHardness(eq(world), eq(blockPos))).thenReturn(0.1f);
+                }
+                case Dirt -> {
+                    when(blockState.getHardness(eq(world), eq(blockPos))).thenReturn(0.5f);
+                }
+                case Rock -> {
+                    when(blockState.getHardness(eq(world), eq(blockPos))).thenReturn(1f);
+                }
+                case Steel -> {
+                    when(blockState.getHardness(eq(world), eq(blockPos))).thenReturn(2f);
+                }
+                case Diamond -> {
+                    when(blockState.getHardness(eq(world), eq(blockPos))).thenReturn(10f);
+                }
+                case Obsidian -> {
+                    when(blockState.getHardness(eq(world), eq(blockPos))).thenReturn(50f);
+                }
+                case Bedrock -> {
+                    when(blockState.getHardness(eq(world), eq(blockPos))).thenReturn(100f);
+                }
+
+            }
+            when(world.getBlockState(eq(blockPos))).thenReturn(blockState);
+
+            return blockState;
+        }
+    }
+
+    private static class MinecartTestBlockArea {
+        final int bottomIdx = -1;
+        final int topIdx = 3;
+        MinecartTestBlockLayer[] array;
+
+        public MinecartTestBlockArea(
+                MinecartTestBlockLayer belowBlocks,
+                MinecartTestBlockLayer levelBlocks,
+                MinecartTestBlockLayer aboveBlocks,
+                MinecartTestBlockLayer aboveBlocks2,
+                MinecartTestBlockLayer aboveBlocks3) {
+            array = new MinecartTestBlockLayer[]{belowBlocks,
+                    levelBlocks,
+                    aboveBlocks,
+                    aboveBlocks2,
+                    aboveBlocks3};
+        }
+
+        public MinecartTestBlockLayer getLayer(int y) {
+            assertThat(y).isBetween(bottomIdx, topIdx);
+
+            return array[y + 1];
+        }
+
+        public void initializeMock(DancZerWorld world, Set<BlockPos> removedBlocks) {
+            for (int i = -1; i <= 3; i++) {
+                getLayer(i).initializeMock(i, world, removedBlocks);
+            }
         }
     }
 }
